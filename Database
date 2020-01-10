@@ -1,0 +1,132 @@
+package com.example.cookbook.MyDb;
+
+import android.content.ContentValues;
+import android.content.Context;
+import android.database.Cursor;
+import android.database.SQLException;
+import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteOpenHelper;
+import android.os.Build;
+import android.os.Environment;
+import android.util.Log;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+
+//database helper by mohammad rezaie
+public class Database extends SQLiteOpenHelper {
+    private final Context c;
+    public SQLiteDatabase sqLiteDatabase;
+    public static final String db_name = "database.db";
+    public static String db_patch = "";
+    public static String mytbl = "cookbook";
+    //entekhab mahale zakhire sazi dar poshie Data Android
+    //file dir= Android data + package name + databases manand tamam app ha
+    public Database(Context context) {
+        super(context, "database", null, 1);
+        db_patch = Environment.getDataDirectory() + "/data/" + context.getPackageName() + "/databases/";
+        c = context;
+
+    }
+
+    @Override
+    public void onCreate(SQLiteDatabase sqLiteDatabase) {
+        //sakht file jaddid  dar mahale zakhire sazi ...
+        //tafavot bin mkdirs va mkdir dar link zir !
+        //https://stackoverflow.com/questions/9820088/difference-between-mkdir-and-mkdirs-in-java-for-java-io-file
+        new File(db_patch).mkdirs();
+    }
+
+    @Override
+    public void onUpgrade(SQLiteDatabase sqLiteDatabase, int i, int i1) {
+
+    }
+
+    //baresi inke database ghablan vojod dashte ya na dar sorat nabodan on file ro misaze...
+    //ba estfade az method copydb ...
+    public void checkcopydb() {
+
+        boolean checkdb = checkdb();
+        if (checkdb) {
+            Log.d("Tag", "database ghablan vojod dashte");
+
+        } else {
+ //getReadableDatabase = ejazie dastresi baraye khondan kart hafeze ya hamin  database khodemon:D
+            this.getReadableDatabase();
+            try {
+                copydb();
+            } catch (IOException e) {
+                e.printStackTrace();
+                Log.d("Tag", "khata hengam copy database");
+            }
+        }
+
+    }
+//baz kardan database
+    public void open() {
+        String mypatch = db_patch + db_name;
+        sqLiteDatabase =
+                SQLiteDatabase.openDatabase(mypatch, null, SQLiteDatabase.OPEN_READWRITE);
+    }
+//bastan database
+    public synchronized void close() {
+        if (sqLiteDatabase != null) {
+            sqLiteDatabase.close();
+            super.close();
+        }
+
+    }
+
+    //darsorat nabodan file file ro misaze vali agar file vojod dasht
+    //faghat on ro mikhone (OPEN_READONLY)
+    public boolean checkdb() {
+        SQLiteDatabase db = null;
+
+        try {
+            String mypatch = db_patch + db_name;
+            File file = new File(mypatch);
+            if (file.exists() && !file.isDirectory()) {
+                sqLiteDatabase = SQLiteDatabase.openDatabase(mypatch, null, SQLiteDatabase.OPEN_READONLY);
+            }
+        } catch (SQLException e) {
+
+        }
+        if (db != null) {
+            db.close();
+        }
+        return sqLiteDatabase != null;
+    }
+
+    //in method baray neveshitan Query hast... k dar activity ha morde estefade gharar migire
+    public Cursor QueryData(String query) {
+        return sqLiteDatabase.rawQuery(query, null);
+    }
+
+    public void copydb() throws IOException {
+        String mypatch = db_patch + db_name;
+        String out = mypatch;
+        InputStream inputStream = c.getAssets().open(db_name);
+        OutputStream outputStream = new FileOutputStream(out);
+        byte[] buffer = new byte[1024];
+        int lenght;
+        while ((lenght = inputStream.read(buffer)) > 0) {
+            outputStream.write(buffer, 0, lenght);
+        }
+        outputStream.flush();
+        outputStream.close();
+        inputStream.close();
+
+    }
+
+//update database va ezafe kardan maghadir be alaghe mandi ha :D
+    public void updatedb(String fav, String id) {
+        ContentValues updatedb = new ContentValues();
+        updatedb.put("fav", fav);
+        sqLiteDatabase.update(mytbl, updatedb, "id=" + id , null);
+    }
+
+
+}
